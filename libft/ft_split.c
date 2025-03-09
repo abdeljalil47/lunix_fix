@@ -12,89 +12,115 @@
 
 #include "libft.h"
 
-static size_t	ft_count_token(const char *s, char c)
+static size_t	word_count(char const *s, char sep)
 {
-	size_t	token;
-	int		flag;
-
-	token = 0;
-	flag = 1;
-	while (*s)
-	{
-		if (*s == c)
-			flag = 1;
-		else
-		{
-			if (flag)
-			{
-				token++;
-				flag = 0;
-			}
-		}
-		s++;
-	}
-	return (token);
-}
-
-static int	safe_malloc(char **strings, int position, size_t buffer)
-{
-	int	i;
+	size_t	i;
+	size_t	wc;
 
 	i = 0;
-	strings[position] = malloc(buffer);
-	if (strings[position] == NULL)
+	wc = 0;
+	while (s[i])
 	{
-		while (i < position)
-		{
-			free(strings[i]);
+		while (s[i] && s[i] == sep)
 			i++;
+		if (s[i] && s[i] != sep)
+		{
+			wc++;
+			if (s[i] == '\'')
+			{
+				i++;
+				while (s[i] && s[i] != '\'')
+					i++;
+			}
+			while (s[i] && s[i] != sep)
+				i++;
 		}
-		free(strings);
-		return (1);
 	}
-	return (0);
+	return (wc);
 }
 
-static int	ft_fill_strs(char **strings, const char *s, char c)
+char	**ft_free1(char **arr, size_t n)
 {
-	size_t	len;
 	size_t	i;
 
 	i = 0;
-	while (*s)
+	while (i < n)
 	{
-		len = 0;
-		while (*s == c && *s)
-			s++;
-		while (*s != c && *s)
-		{
-			len++;
-			s++;
-		}
-		if (len > 0)
-		{
-			if (safe_malloc(strings, i, len + 1))
-				return (1);
-			ft_strlcpy(strings[i], s - len, len + 1);
-			i++;
-		}
+		free(arr[i]);
+		i++;
 	}
+	free(arr);
+	return (NULL);
+}
+
+static char	*ft_allocate(const char *s, char end)
+{
+	size_t	len;
+	char	*str;
+	size_t	i;
+
+	len = 0;
+	while (s[len] && s[len] != end)
+		len++;
+	str = malloc(len + 1);
+	if (str == NULL)
+		return (NULL);
+	i = 0;
+	while (i < len)
+	{
+		str[i] = s[i];
+		i++;
+	}
+	str[len] = '\0';
+	return (str);
+}
+
+static int	handle_word(const char **s_ptr, char **arr, size_t *i, char sep)
+{
+	const char	*s;
+	char		end_char;
+
+	s = *s_ptr;
+	if (*s == '\'')
+	{
+		s++;
+		end_char = '\'';
+	}
+	else
+		end_char = sep;
+	arr[*i] = ft_allocate(s, end_char);
+	if (arr[*i] == NULL)
+		return (-1);
+	while (*s && *s != end_char)
+		s++;
+	*s_ptr = s;
+	if (*s == '\'')
+		(*s_ptr)++;
+	(*i)++;
 	return (0);
 }
 
-char	**ft_split(const char *s, char c)
+char	**ft_split(char const *s, char sep)
 {
-	size_t	word_count;
-	char	**strings;
+	char	**arr;
+	size_t	i;
 
 	if (s == NULL)
 		return (NULL);
-	word_count = ft_count_token(s, c);
-	strings = malloc((word_count + 1) * sizeof(char *));
-	if (strings == NULL)
+	arr = malloc(sizeof(char *) * (word_count(s, sep) + 1));
+	if (arr == NULL)
 		return (NULL);
-	strings[word_count] = NULL;
-	if (ft_fill_strs(strings, s, c))
-		return (NULL);
-	return (strings);
+	i = 0;
+	while (*s)
+	{
+		while (*s && *s == sep)
+			s++;
+		if (*s && *s != sep)
+		{
+			if (handle_word(&s, arr, &i, sep) != 0)
+				return (ft_free1(arr, i));
+		}
+	}
+	arr[i] = NULL;
+	return (arr);
 }

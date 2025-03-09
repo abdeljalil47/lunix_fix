@@ -1,6 +1,6 @@
 #include "../minishell.h"
 /*
-When a process calls waitpid to wait for a child process to change state (e.g., terminate), the kernel may put the calling process in a blocked state.
+*When a process calls waitpid to wait for a child process to change state (e.g., terminate), the kernel may put the calling process in a blocked state.
 	If a signal is delivered to the process while it is waiting, the waitpid call may be interrupted.
 	In such cases, waitpid returns -1, and errno is set to EINTR.
 */
@@ -18,7 +18,7 @@ int ft_open_file(t_m_shell *cmd)
 	}
 	else if (cmd->direction == OUTFILE && cmd->path_infile->redir == OUTFILE)
 	{
-		fd = open(cmd->path_outfile->file, O_CREAT, O_CREAT | O_RDWR | O_TRUNC, 0644);
+		fd = open(cmd->path_outfile->file, O_CREAT | O_RDWR | O_TRUNC, 0644);
 		if (fd == -1)
 			return perror("fd"), fd;
 	}
@@ -30,7 +30,7 @@ int ft_open_file(t_m_shell *cmd)
 	}
 	else if (cmd->direction == APPAND && cmd->path_infile->redir == APPAND)
 	{
-		fd = open(cmd->path_outfile->file, O_CREAT, O_CREAT | O_RDWR | O_APPEND, 0644);
+		fd = open(cmd->path_outfile->file, O_CREAT | O_RDWR | O_APPEND, 0644);
 		if (fd == -1)
 			return perror("fd"), fd;
 	}
@@ -39,8 +39,9 @@ int ft_open_file(t_m_shell *cmd)
 	return (fd);
 }
 
-int ft_redirection(int fd, t_m_shell *redir, t_pipe *direc)
+int ft_redirection(int fd, t_m_shell *redir, t_pipe *direc, int size)
 {
+	static int m = 1;
 	if (redir->direction == INFILE || redir->direction == HERE_DOC)
 	{
 		if (fd != 0 && dup2(fd, STDIN_FILENO) == -1)
@@ -51,7 +52,6 @@ int ft_redirection(int fd, t_m_shell *redir, t_pipe *direc)
 		if (fd != 0 && dup2(fd, STDOUT_FILENO) == -1)
 			return error_exit("Function dup2() failed 0\n"), EXIT_FAILURE;
 	}
-	// rediriction pipes
 	if (direc)
 	{
 		if (direc->i == 1)
@@ -59,19 +59,24 @@ int ft_redirection(int fd, t_m_shell *redir, t_pipe *direc)
 			if (dup2(direc->pip[1], STDOUT_FILENO) == -1)
 				return error_exit("Function dup2() failed 1\n"), EXIT_FAILURE;
 		}
-		if (direc->i != 1 && direc->prev_fd != -1)
+		else if (direc->i != 1 && direc->prev_fd != -1)
 		{
 			if (dup2(direc->prev_fd, STDIN_FILENO) == -1)
 				return error_exit("Function dup2() failed 2\n"), EXIT_FAILURE;
-			if (dup2(direc->pip[1], STDOUT_FILENO) == -1)
-				return error_exit("Function dup2() failed 3\n"), EXIT_FAILURE;
+			m = direc->i;
+			if (size > m)
+			{
+				if (dup2(direc->pip[1], STDOUT_FILENO) == -1) // should be in pipe or standard?
+					return error_exit("Function dup2() failed 3\n"), EXIT_FAILURE;
+				m++;
+			}
 		}
 	}
 	return EXIT_SUCCESS;
 }
-int	ft_find_bonus(char *s, char *sep)
+int ft_find_bonus(char *s, char *sep)
 {
-	int	i;
+	int i;
 
 	i = 0;
 	while (sep[i])
@@ -82,7 +87,7 @@ int	ft_find_bonus(char *s, char *sep)
 	}
 	return (0);
 }
-int	check_cdm(char *s)
+int check_cdm(char *s)
 {
 	if (ft_find_bonus(s, "/.") == 1)
 	{
@@ -95,10 +100,10 @@ int	check_cdm(char *s)
 }
 // 0-> slash
 // 1-> space
-int	ft_praper_cmd(char **cmd, char **path, char **cmds)
+int ft_praper_cmd(char **cmd, char **path, char **cmds)
 {
-	int		i;
-	char	*full;
+	int i;
+	char *full;
 
 	i = 0;
 	if (ft_find_bonus(cmds[0], "/."))
@@ -122,7 +127,7 @@ int	ft_praper_cmd(char **cmd, char **path, char **cmds)
 	}
 	return (0);
 }
-int	excute_cmd_p(char *cmd, char **cmds, t_env *env)
+int excute_cmd_p(char *cmd, char **cmds, t_env *env)
 {
 	int i = 0;
 	char *comand;
@@ -141,15 +146,15 @@ int	excute_cmd_p(char *cmd, char **cmds, t_env *env)
 		return EXIT_FAILURE;
 	if (execve(comand, cmds, env_tab) == -1)
 	{
-		//free
-		//handle exit status for commands
-		//check the errno 127 or 126 then exit
+		// free
+		// handle exit status for commands
+		// check the errno 127 or 126 then exit
 		print_error("minishell: command not found\n");
 		exit(0);
 	}
 	return EXIT_SUCCESS;
 }
-int ft_excute_cmd(t_m_shell *cmd, t_env *env, t_pipe *pip)
+int ft_excute_cmd(t_m_shell *cmd, t_env *env, t_pipe *pip, t_shell_list *command)
 {
 	int pid;
 	int fd;
@@ -162,7 +167,7 @@ int ft_excute_cmd(t_m_shell *cmd, t_env *env, t_pipe *pip)
 		fd = ft_open_file(cmd);
 		if (fd < 0)
 			return -1;
-		ft_redirection(fd, cmd, pip);
+		ft_redirection(fd, cmd, pip, command->cmd_size);
 		if (cmd->type == BUILT_IN)
 			ft_manage_cmd_build(env, cmd->args, cmd->args[0]);
 		else
@@ -173,7 +178,6 @@ int ft_excute_cmd(t_m_shell *cmd, t_env *env, t_pipe *pip)
 	}
 	return (pid);
 }
-
 void ft_wait(int pid, int *status)
 {
 	int wait_id;
@@ -182,15 +186,20 @@ void ft_wait(int pid, int *status)
 	{
 		wait_id = waitpid(pid, status, 0);
 		if (wait_id == -1 && errno == EINTR)
-			continue;
+			continue ;
 		if (wait_id == -1)
-			break;
+			break ;
 	}
+	// while (wait(NULL) > 0)
+	// 	;
 }
-int	ft_open_one_cmd(t_m_shell *cmd)
+int ft_open_one_cmd(t_m_shell *cmd)
 {
+	printf("aaaaaaaaaaaaaaaa\n");
 	int fd;
 
+	if (!cmd || cmd->path_outfile == NULL)
+		return print_error("minishell: error: The redirection command is NULL.\n"), -1;
 	fd = -1;
 	if (cmd->direction == NONE)
 		return 0;
@@ -235,7 +244,7 @@ int ft_excute_cmd_one(t_m_shell *cmd, t_env *envp)
 		fd = ft_open_one_cmd(cmd);
 		if (fd < 0)
 			return -1;
-		ft_redirection(fd, cmd, NULL);
+		ft_redirection(fd, cmd, NULL, 0);
 		if (cmd->type == BUILT_IN)
 			ft_manage_cmd_build(envp, cmd->args, cmd->args[0]);
 		else
@@ -251,13 +260,13 @@ void ft_excute(t_shell_list **command, t_env **env)
 	t_m_shell *current;
 	t_pipe *ppp = malloc(sizeof(t_pipe));
 	if (!ppp)
-		return ;
+		return;
 
 	ppp->i = 1;
 	ppp->prev_fd = -1;
 
 	if (!command || !*command || !env)
-		return ;
+		return;
 
 	if ((*command)->cmd_size == 1)
 	{
@@ -269,20 +278,21 @@ void ft_excute(t_shell_list **command, t_env **env)
 		current = (*command)->head;
 		while (current)
 		{
-			ppp->prev_fd = -1;
 			if ((*command)->cmd_size > ppp->i)
 			{
 				if (pipe(ppp->pip) == -1)
 					return error_exit("Function pipe() failed\n");
 			}
-			ppp->pid = ft_excute_cmd(current, *env, ppp);
+			ppp->pid = ft_excute_cmd(current, *env, ppp, *command);
 			ft_wait(ppp->pid, &(*env)->exit_status);
 			if ((*command)->cmd_size > ppp->i)
 			{
 				ppp->prev_fd = ppp->pip[0];
-				close(ppp->pip[0]);
+				// close(ppp->pip[0]);
 				close(ppp->pip[1]);
 			}
+			if (current->next == NULL)
+				ppp->prev_fd = -1;
 			current = current->next;
 			ppp->i++;
 		}
