@@ -9,9 +9,11 @@ t_m_shell *create_node(char *cmd)
 	new_node->cmd = strdup(cmd);
 	new_node->args = ft_split(cmd, ' ');
 	new_node->type = COMMAND;
-	new_node->direction = NONE;
+	new_node->direction = OUTFILE;
 	new_node->path_infile = NULL;
-	new_node->path_outfile = NULL;
+	new_node->path_outfile = malloc(sizeof(t_redirction));
+	new_node->path_outfile->redir = OUTFILE;
+	new_node->path_outfile->file = ft_strdup("a");
 	new_node->here_doc = NULL;
 	new_node->appand = NULL;
 	new_node->next = NULL;
