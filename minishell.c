@@ -2,42 +2,22 @@
 
 t_m_shell *create_node(char *cmd)
 {
-	t_m_shell *new_node = malloc(sizeof(t_m_shell));
-	if (!new_node)
-		return NULL;
+    // Allocate memory for the new node
+    t_m_shell *new_node = malloc(sizeof(t_m_shell));
+    if (!new_node)
+        return NULL;
+    new_node->cmd = strdup(cmd);
+    new_node->args = ft_split(cmd, ' ');
+    new_node->type = COMMAND;
+    new_node->direction = NONE;
+    new_node->path_infile = NULL;
+    new_node->path_outfile = NULL;
+    new_node->here_doc = NULL;
+    new_node->appand = NULL;
+    new_node->next = NULL;
 
-	new_node->cmd = strdup(cmd);
-	new_node->args = ft_split(cmd, ' ');
-	new_node->type = COMMAND;
-	new_node->direction = OUTFILE;
-	new_node->path_infile = NULL;
-	new_node->path_outfile = malloc(sizeof(t_redirction));
-	new_node->path_outfile->redir = OUTFILE;
-	new_node->path_outfile->file = ft_strdup("a");
-	new_node->here_doc = NULL;
-	new_node->appand = NULL;
-	new_node->next = NULL;
-
-	return new_node;
+    return new_node;
 }
-
-// Function to add redirection
-void add_redirection(t_m_shell *node, t_enum type, char *file)
-{
-	t_redirction *redir = malloc(sizeof(t_redirction));
-	if (!redir)
-		return;
-
-	redir->redir = type;
-	redir->file = strdup(file);
-
-	if (type == INFILE)
-		node->path_infile = redir;
-	else if (type == OUTFILE)
-		node->path_outfile = redir;
-}
-
-// Fixed add_back function (uses t_shell_list)
 void add_back(t_shell_list *list, t_m_shell *new_node)
 {
 	if (!list || !new_node)
@@ -187,7 +167,7 @@ int main(int ac, char **av, char **envp)
             }
             add_back(shell_list, new_node);
         }
-
+        
         ft_excute(&shell_list, &env_list);
 
         // Free tokenized input array

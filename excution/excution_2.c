@@ -8,6 +8,16 @@ int ft_open_file(t_m_shell *cmd)
 {
 	int fd = -1;
 
+	if (!cmd)
+		return print_error("minishell: error: The redirection command is NULL.\n"), -1;
+	if (cmd->path_outfile != NULL && cmd->path_outfile->file == NULL)
+		return print_error("minishell: error: path_outfile is NULL or has an invalid file.\n"), -1;
+	else if (cmd->path_infile != NULL && cmd->path_infile->file == NULL)
+		return print_error("minishell: error: path_infile file is NULL.\n"), -1;
+	else if (cmd->here_doc != NULL && cmd->here_doc->file == NULL)
+		return print_error("minishell: error: here_doc file is NULL.\n"), -1;
+	else if (cmd->appand != NULL && cmd->appand->file == NULL)
+		return print_error("minishell: error: appand file is NULL.\n"), -1;
 	if (cmd->direction == NONE)
 		return 0;
 	else if (cmd->direction == INFILE && cmd->path_infile->redir == INFILE)
@@ -16,7 +26,7 @@ int ft_open_file(t_m_shell *cmd)
 		if (fd == -1)
 			return perror("fd"), fd;
 	}
-	else if (cmd->direction == OUTFILE && cmd->path_infile->redir == OUTFILE)
+	else if (cmd->direction == OUTFILE && cmd->path_outfile->redir == OUTFILE)
 	{
 		fd = open(cmd->path_outfile->file, O_CREAT | O_RDWR | O_TRUNC, 0644);
 		if (fd == -1)
@@ -28,9 +38,9 @@ int ft_open_file(t_m_shell *cmd)
 		if (fd == -1)
 			return perror("fd"), fd;
 	}
-	else if (cmd->direction == APPAND && cmd->path_infile->redir == APPAND)
+	else if (cmd->direction == APPAND && cmd->appand->redir == APPAND)
 	{
-		fd = open(cmd->path_outfile->file, O_CREAT | O_RDWR | O_APPEND, 0644);
+		fd = open(cmd->appand->file, O_CREAT | O_RDWR | O_APPEND, 0644);
 		if (fd == -1)
 			return perror("fd"), fd;
 	}
@@ -58,16 +68,21 @@ int ft_redirection(int fd, t_m_shell *redir, t_pipe *direc, int size)
 		{
 			if (dup2(direc->pip[1], STDOUT_FILENO) == -1)
 				return error_exit("Function dup2() failed 1\n"), EXIT_FAILURE;
+			close(direc->pip[0]);
+			close(direc->pip[1]);
 		}
 		else if (direc->i != 1 && direc->prev_fd != -1)
 		{
 			if (dup2(direc->prev_fd, STDIN_FILENO) == -1)
 				return error_exit("Function dup2() failed 2\n"), EXIT_FAILURE;
+			close(direc->prev_fd);
 			m = direc->i;
 			if (size > m)
 			{
 				if (dup2(direc->pip[1], STDOUT_FILENO) == -1) // should be in pipe or standard?
 					return error_exit("Function dup2() failed 3\n"), EXIT_FAILURE;
+				close(direc->pip[0]);
+				close(direc->pip[1]);
 				m++;
 			}
 		}
@@ -186,51 +201,58 @@ void ft_wait(int pid, int *status)
 	{
 		wait_id = waitpid(pid, status, 0);
 		if (wait_id == -1 && errno == EINTR)
-			continue ;
+			continue;
 		if (wait_id == -1)
-			break ;
+			break;
 	}
 	// while (wait(NULL) > 0)
 	// 	;
 }
-int ft_open_one_cmd(t_m_shell *cmd)
+int ft_open_one_cmd(t_m_shell **cmd)
 {
-	printf("aaaaaaaaaaaaaaaa\n");
-	int fd;
+	int fd = -1;
 
-	if (!cmd || cmd->path_outfile == NULL)
+	if (!cmd || !*cmd)
 		return print_error("minishell: error: The redirection command is NULL.\n"), -1;
-	fd = -1;
-	if (cmd->direction == NONE)
+	if ((*cmd)->path_outfile != NULL && (*cmd)->path_outfile->file == NULL)
+		return print_error("minishell: error: path_outfile is NULL or has an invalid file.\n"), -1;
+	else if ((*cmd)->path_infile != NULL && (*cmd)->path_infile->file == NULL)
+		return print_error("minishell: error: path_infile file is NULL.\n"), -1;
+	else if ((*cmd)->here_doc != NULL && (*cmd)->here_doc->file == NULL)
+		return print_error("minishell: error: here_doc file is NULL.\n"), -1;
+	else if ((*cmd)->appand != NULL && (*cmd)->appand->file == NULL)
+		return print_error("minishell: error: here_doc file is NULL.\n"), -1;
+	else if ((*cmd)->direction == NONE)
 		return 0;
-	else if (cmd->direction == INFILE && cmd->path_infile->redir == INFILE)
+	if ((*cmd)->direction == INFILE && (*cmd)->path_infile != NULL && (*cmd)->path_infile->redir == INFILE)
 	{
-		fd = open(cmd->path_infile->file, O_RDONLY);
+		fd = open((*cmd)->path_infile->file, O_RDONLY);
 		if (fd == -1)
 			return perror("fd"), fd;
 	}
-	else if (cmd->direction == OUTFILE && cmd->path_infile->redir == OUTFILE)
+	else if ((*cmd)->direction == OUTFILE && (*cmd)->path_outfile->redir == 111)
 	{
-		fd = open(cmd->path_outfile->file, O_CREAT, O_CREAT | O_RDWR | O_TRUNC, 0644);
+		fd = open((*cmd)->path_outfile->file, O_CREAT | O_RDWR | O_TRUNC, 0644);
 		if (fd == -1)
 			return perror("fd"), fd;
 	}
-	else if (cmd->direction == HERE_DOC && cmd->here_doc->redir == HERE_DOC)
+	else if ((*cmd)->direction == HERE_DOC && (*cmd)->here_doc != NULL && (*cmd)->here_doc->redir == HERE_DOC)
 	{
-		fd = open(cmd->here_doc->file, O_RDONLY);
+		fd = open((*cmd)->here_doc->file, O_RDONLY);
 		if (fd == -1)
 			return perror("fd"), fd;
 	}
-	else if (cmd->direction == APPAND && cmd->path_infile->redir == APPAND)
+	else if ((*cmd)->direction == APPAND && (*cmd)->path_outfile != NULL && (*cmd)->path_outfile->redir == APPAND)
 	{
-		fd = open(cmd->path_outfile->file, O_CREAT, O_CREAT | O_RDWR | O_APPEND, 0644);
+		fd = open((*cmd)->path_outfile->file, O_CREAT | O_RDWR | O_APPEND, 0644);
 		if (fd == -1)
 			return perror("fd"), fd;
 	}
 	else
-		error_exit("Error: Unknown redirection type in ft_open_file.\n");
-	return (fd);
+		return error_exit("Error: Unknown redirection type in ft_open_one_cmd.\n"), -1;
+	return fd;
 }
+
 int ft_excute_cmd_one(t_m_shell *cmd, t_env *envp)
 {
 	int pid;
@@ -241,7 +263,7 @@ int ft_excute_cmd_one(t_m_shell *cmd, t_env *envp)
 		return print_error("Function fork() failed\n"), -1;
 	if (pid == 0)
 	{
-		fd = ft_open_one_cmd(cmd);
+		fd = ft_open_one_cmd(&cmd);
 		if (fd < 0)
 			return -1;
 		ft_redirection(fd, cmd, NULL, 0);
@@ -292,7 +314,10 @@ void ft_excute(t_shell_list **command, t_env **env)
 				close(ppp->pip[1]);
 			}
 			if (current->next == NULL)
+			{
 				ppp->prev_fd = -1;
+				close(ppp->pip[1]);
+			}
 			current = current->next;
 			ppp->i++;
 		}

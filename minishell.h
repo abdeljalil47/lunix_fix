@@ -36,8 +36,8 @@ typedef struct s_env
 
 typedef enum s_enum
 {
-	COMMAND,
 	EQUAL = 0,
+	COMMAND,
 	INFILE,
 	OUTFILE,
 	HERE_DOC,
